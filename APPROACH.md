@@ -58,8 +58,11 @@ caveat that certain wine and beer classes are exempt from stating it.
 
 Marcus said "don't do anything crazy" — but a deployed endpoint still gets the basics:
 
-- **Same-origin only.** No CORS headers are emitted, so another website's JavaScript cannot
-  make visitors' browsers spend this project's inference quota (the preflight fails).
+- **Same-origin only.** No CORS grant is emitted, so cross-origin JSON calls die at preflight —
+  and the function also rejects any request whose `Origin` header isn't its own host and any
+  body that isn't `application/json`, which closes the preflight-free "simple request" path
+  (`text/plain` bodies). Another website cannot make visitors' browsers spend this project's
+  inference quota.
 - **Bounded input.** Request bodies and the image payload are size-capped server-side (413
   beyond ~6 MB); client images are downscaled before upload anyway.
 - **Typed input.** Client-supplied fields are coerced to bounded strings before they reach

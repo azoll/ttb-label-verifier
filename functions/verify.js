@@ -102,6 +102,16 @@ export async function onRequestPost(context) {
   if (!env.AI_GATEWAY_API_KEY)
     return json({ error: "Server is missing AI_GATEWAY_API_KEY. Bind it in the Pages project settings." }, 500);
 
+  // Same-origin enforcement. Browsers send Origin on every cross-origin POST; if it's
+  // present and isn't us, refuse. Requiring the JSON content-type also forces any
+  // cross-origin browser caller through a preflight (which this route does not grant),
+  // closing the no-preflight "simple request" path that text/plain bodies would allow.
+  const origin = request.headers.get("origin");
+  if (origin && new URL(origin).host !== new URL(request.url).host)
+    return json({ error: "Cross-origin requests are not accepted." }, 403);
+  if (!(request.headers.get("content-type") || "").includes("application/json"))
+    return json({ error: "Expected content-type: application/json." }, 415);
+
   const declared = parseInt(request.headers.get("content-length") || "0", 10);
   if (declared > MAX_BODY_BYTES)
     return json({ error: "Image too large. Resize to under ~6 MB and retry." }, 413);
