@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   CANONICAL_WARNING, normBrand, parseAbv, similarity,
-  checkBrand, checkAbv, checkWarning, checkPresence, runChecks,
+  checkBrand, checkAbv, checkWarning, checkPresence, checkAbvPresence, runChecks,
 } from "../lib/ttb-verify-core.mjs";
 
 const goodWarning = {
@@ -68,6 +68,26 @@ test("warning: missing statement fails", () => {
   assert.equal(checkWarning({ present: false, verbatim_text: null }).status, "fail");
 });
 
+test("warning: omitting a single word ('not') fails — no similarity loophole", () => {
+  const r = checkWarning({ present: true, prefix_is_all_caps: true, appears_bold: true,
+    verbatim_text: CANONICAL_WARNING.replace("should not drink", "should drink") });
+  assert.equal(r.status, "fail");
+  assert.match(r.detail, /word-for-word/);
+});
+
+test("warning: substituting one word fails — no similarity loophole", () => {
+  const r = checkWarning({ present: true, prefix_is_all_caps: true, appears_bold: true,
+    verbatim_text: CANONICAL_WARNING.replace("birth defects", "birth issues") });
+  assert.equal(r.status, "fail");
+});
+
+test("warning: punctuation/casing transcription noise still passes", () => {
+  const noisy = CANONICAL_WARNING.replace("(1)", "(1) ").replace("machinery,", "machinery ,");
+  const r = checkWarning({ present: true, prefix_is_all_caps: true, appears_bold: true,
+    verbatim_text: noisy });
+  assert.equal(r.status, "pass");
+});
+
 test("warning: correct wording but not bold is a warn", () => {
   assert.equal(checkWarning({ ...goodWarning, appears_bold: false }).status, "warn");
 });
@@ -109,4 +129,34 @@ test("runChecks batch: screens intrinsic compliance without application data", (
 test("similarity is 1 for identical and <1 for different strings", () => {
   assert.equal(similarity("abc", "abc"), 1);
   assert.ok(similarity("abc", "abd") < 1);
+});
+
+test("abv presence: missing ABV warns with the wine/beer exemption note", () => {
+  const r = checkAbvPresence(null, null);
+  assert.equal(r.status, "warn");
+  assert.match(r.detail, /exempt/);
+});
+
+test("runChecks single: blank application falls back to an intrinsic screen", () => {
+  const extracted = {
+    brand_name: "OLD TOM DISTILLERY", class_type: "Bourbon",
+    alcohol_content: "45%", abv_percent: 45, net_contents: "750 mL",
+    producer_name_address: "Bardstown, KY", government_warning: goodWarning,
+  };
+  const r = runChecks("single", { brandName: "", abv: "", classType: "" }, extracted);
+  assert.equal(r.status, "pass");
+  // presence fallbacks ran instead of silent skips
+  assert.ok(r.checks.find((c) => c.field === "Brand name"));
+  assert.ok(r.checks.find((c) => c.field === "Alcohol content"));
+  assert.ok(r.checks.find((c) => c.field === "Net contents"));
+});
+
+test("runChecks single: includes net contents + producer presence (TTB-required fields)", () => {
+  const extracted = {
+    brand_name: "OLD TOM DISTILLERY", alcohol_content: "45%", abv_percent: 45,
+    net_contents: null, producer_name_address: null, government_warning: goodWarning,
+  };
+  const r = runChecks("single", { brandName: "Old Tom Distillery", abv: "45%" }, extracted);
+  assert.equal(r.status, "warn");
+  assert.equal(r.checks.find((c) => c.field === "Net contents").status, "warn");
 });

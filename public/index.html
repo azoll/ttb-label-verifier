@@ -152,7 +152,7 @@
       <div class="grid">
         <div class="card">
           <h2>1 · The application</h2>
-          <p class="sub">What the applicant told us. We check the label against this.</p>
+          <p class="sub">What the applicant told us. We check the label against this. Leave blank to screen the label on its own.</p>
           <label class="fld"><span class="lab">Brand name</span>
             <input type="text" id="app-brand" placeholder="e.g. Old Tom Distillery"/></label>
           <label class="fld"><span class="lab">Alcohol content (ABV)</span>
@@ -181,23 +181,23 @@
         </div>
       </div>
 
-      <div class="result card" id="single-result"></div>
+      <div class="result card" id="single-result" role="status" aria-live="polite"></div>
     </div>
 
     <!-- ============ BATCH ============ -->
     <div class="panel" id="panel-batch">
       <div class="card">
         <h2>Batch screen</h2>
-        <p class="sub">For the importer dumps. Drop many labels at once; each is screened for the mandatory Government Warning and the required fields. Results stream in as they finish.</p>
+        <p class="sub">Built for the 200–300-label importer dumps. Drop them all at once; each is screened for the mandatory Government Warning and the required fields. Results stream in as they finish.</p>
         <div class="drop" id="batch-drop" tabindex="0" role="button" aria-label="Upload label images">
           <strong>Drop label images here</strong>
-          <div class="hint">or click to choose · select up to 50 at a time</div>
+          <div class="hint">or click to choose · up to 300 at a time</div>
         </div>
         <input type="file" id="batch-file" accept="image/*" multiple hidden/>
         <div class="batchbar">
           <button class="btn-ghost" id="batch-samples">Load 4 sample labels</button>
           <button class="btn-ghost" id="batch-clear">Clear</button>
-          <span class="count" id="batch-count">No labels queued.</span>
+          <span class="count" id="batch-count" aria-live="polite">No labels queued.</span>
           <span style="flex:1"></span>
           <button class="btn-ghost" id="batch-csv" style="display:none">Export CSV</button>
         </div>
@@ -282,8 +282,8 @@
         <span class="vtime">${(data.elapsedMs/1000).toFixed(1)}s · ${data.model.replace('anthropic/','')}</span></div>`;
       for(const c of data.checks){
         html += `<div class="check"><span class="ic ${c.status}">${ICON[c.status]}</span>
-          <div class="body"><div class="cf">${c.field}</div>
-          <div class="cd">${c.detail}</div>
+          <div class="body"><div class="cf">${escapeHtml(c.field)}</div>
+          <div class="cd">${escapeHtml(c.detail)}</div>
           <div class="cmeta">application: <code>${escapeHtml(String(c.expected))}</code> &nbsp; label: <code>${escapeHtml(String(c.found))}</code></div>
           </div></div>`;
       }
@@ -353,7 +353,7 @@
       bGo.disabled = batchItems.length===0;
     }
     async function addBatchFiles(files){
-      for(const f of files.slice(0,50)){
+      for(const f of files.slice(0,300)){
         if(!f.type.startsWith('image/'))continue;
         batchItems.push({name:f.name, dataUrl:await scaledDataUrl(f), result:null});
       }
@@ -367,8 +367,8 @@
     };
 
     function findings(data){
-      if(data.error) return 'Error: '+data.error;
-      const issues=data.checks.filter(c=>c.status!=='pass').map(c=>`${c.field} — ${c.detail}`);
+      if(data.error) return 'Error: '+escapeHtml(data.error);
+      const issues=data.checks.filter(c=>c.status!=='pass').map(c=>`${escapeHtml(c.field)} — ${escapeHtml(c.detail)}`);
       return issues.length ? issues.join('<br/>') : 'All required fields present and warning correct.';
     }
 
@@ -380,7 +380,8 @@
         bTbody.appendChild(tr); return tr;
       });
       // concurrency pool of 4
-      let idx=0; const POOL=4;
+      let idx=0, done=0; const tally={pass:0,warn:0,fail:0,error:0}; const POOL=6;
+      const tick=st=>{done++;tally[st]=(tally[st]||0)+1;bCount.textContent=`${done}/${batchItems.length} screened · ${tally.pass} pass · ${tally.warn} review · ${tally.fail+tally.error} fail`;};
       async function worker(){
         while(idx<batchItems.length){
           const i=idx++; const it=batchItems[i]; const tr=rows[i];
@@ -391,10 +392,12 @@
             tr.children[1].innerHTML=`<span class="st ${data.status}">${data.status}</span>`;
             tr.children[2].innerHTML=findings(data);
             tr.children[3].textContent=(data.elapsedMs/1000).toFixed(1)+'s';
+            tick(data.status);
           }catch(e){
             it.result={error:e.message};
             tr.children[1].innerHTML=`<span class="st fail">error</span>`;
             tr.children[2].textContent=e.message;
+            tick('error');
           }
         }
       }
