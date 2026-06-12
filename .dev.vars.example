@@ -1,0 +1,3 @@
+# Copy to .dev.vars and fill in. Used by `npm run dev` (wrangler) for local runs.
+# A Vercel AI Gateway key (vck_...) that can route to anthropic/* models.
+AI_GATEWAY_API_KEY=vck_your_key_here

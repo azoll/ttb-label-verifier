@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>TTB Label Compliance Verifier · Built for U.S. Treasury · Andrew Zoll</title>
+  <meta name="description" content="A working AI prototype that verifies alcohol beverage labels against TTB requirements in seconds. Built by Andrew Zoll for the Department of the Treasury IT Specialist (AI) take-home."/>
+  <meta name="robots" content="noindex, nofollow"/>
+  <link rel="icon" href="/assets/favicon-primary.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --navy:#0B2545; --navy-700:#13315C; --navy-600:#1B3A66; --steel:#3E5C84;
+      --ink:#10182A; --slate:#3A455C; --muted:#6B7689; --line:#E2E6EE; --paper:#F6F8FB;
+      --gold:#B08A3E; --pass:#1F7A4D; --pass-bg:#E7F4EC; --warn:#9A6A12; --warn-bg:#FBF1DC;
+      --fail:#B4323C; --fail-bg:#FBE9EA;
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;background:#fff;color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
+    a{color:var(--navy-600);}
+    .nav{display:flex;justify-content:space-between;align-items:center;padding:16px 26px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:20;}
+    .brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--ink);text-decoration:none;letter-spacing:.02em;}
+    .brand .mark{width:14px;height:14px;background:var(--navy);border-radius:3px;display:inline-block;}
+    .nav-links{display:flex;gap:20px;align-items:center;}
+    .nav-links a{font-size:13.5px;font-weight:600;color:var(--slate);text-decoration:none;}
+    .nav-links a:hover{color:var(--navy);}
+
+    .hero{background:linear-gradient(160deg,var(--navy),var(--navy-700));color:#fff;padding:46px 24px 40px;}
+    .hero .inner{max-width:1040px;margin:0 auto;}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#C9D6EC;border:1px solid rgba(255,255,255,.22);padding:6px 13px;border-radius:999px;margin-bottom:18px;}
+    .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);}
+    h1{font-size:clamp(28px,4.4vw,42px);font-weight:800;line-height:1.08;letter-spacing:-0.02em;margin:0 0 14px;max-width:760px;}
+    .hero p{font-size:17px;line-height:1.6;color:#D5DEEE;margin:0 0 8px;max-width:680px;}
+    .hero .meta{font-size:13px;color:#9FB0CC;margin-top:16px;}
+
+    .wrap{max-width:1040px;margin:0 auto;padding:34px 24px 90px;}
+
+    .tabs{display:flex;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:5px;width:fit-content;margin:0 auto 26px;}
+    .tab{appearance:none;border:0;background:transparent;font-family:inherit;font-size:14.5px;font-weight:600;color:var(--slate);padding:10px 22px;border-radius:9px;cursor:pointer;}
+    .tab[aria-selected="true"]{background:var(--navy);color:#fff;}
+
+    .panel{display:none;}
+    .panel.active{display:block;}
+
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+    @media(max-width:760px){.grid{grid-template-columns:1fr;}}
+
+    .card{border:1px solid var(--line);border-radius:16px;padding:22px;background:#fff;box-shadow:0 1px 3px rgba(16,24,42,.04);}
+    .card h2{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);margin:0 0 4px;}
+    .card .sub{font-size:13px;color:var(--muted);margin:0 0 18px;}
+
+    label.fld{display:block;margin:0 0 15px;}
+    label.fld .lab{display:block;font-size:13.5px;font-weight:600;color:var(--slate);margin-bottom:6px;}
+    input[type=text]{width:100%;font-family:inherit;font-size:15px;color:var(--ink);padding:11px 13px;border:1px solid var(--border-strong,#CBD2DE);border-radius:10px;background:#fff;}
+    input[type=text]:focus{outline:none;border-color:var(--steel);box-shadow:0 0 0 3px rgba(62,92,132,.15);}
+
+    .drop{border:2px dashed #C3CCDB;border-radius:14px;padding:24px;text-align:center;color:var(--muted);background:var(--paper);cursor:pointer;transition:border-color .15s,background .15s;}
+    .drop:hover,.drop.over{border-color:var(--steel);background:#EEF3FA;}
+    .drop strong{color:var(--slate);font-weight:600;}
+    .drop .hint{font-size:12.5px;margin-top:6px;}
+    .preview{margin-top:14px;display:none;}
+    .preview img{max-width:100%;max-height:260px;border-radius:10px;border:1px solid var(--line);}
+
+    .btn{appearance:none;border:0;font-family:inherit;font-weight:600;font-size:15px;border-radius:10px;cursor:pointer;padding:13px 22px;}
+    .btn-primary{background:var(--navy);color:#fff;width:100%;}
+    .btn-primary:hover{background:var(--navy-700);}
+    .btn-primary:disabled{opacity:.55;cursor:default;}
+    .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--slate);padding:8px 14px;font-size:13px;border-radius:999px;}
+    .btn-ghost:hover{border-color:var(--steel);color:var(--navy);}
+
+    .samples{margin-top:6px;}
+    .samples .slab{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:9px;}
+    .samples .row{display:flex;flex-wrap:wrap;gap:8px;}
+
+    .result{margin-top:22px;display:none;}
+    .verdict{display:flex;align-items:center;gap:13px;padding:16px 18px;border-radius:13px;margin-bottom:16px;}
+    .verdict .badge{font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:6px 12px;border-radius:999px;}
+    .verdict .vtext{font-size:15px;font-weight:600;}
+    .verdict .vtime{margin-left:auto;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
+    .v-pass{background:var(--pass-bg);} .v-pass .badge{background:var(--pass);color:#fff;} .v-pass .vtext{color:var(--pass);}
+    .v-warn{background:var(--warn-bg);} .v-warn .badge{background:var(--warn);color:#fff;} .v-warn .vtext{color:var(--warn);}
+    .v-fail{background:var(--fail-bg);} .v-fail .badge{background:var(--fail);color:#fff;} .v-fail .vtext{color:var(--fail);}
+
+    .check{display:flex;gap:12px;padding:13px 2px;border-top:1px solid var(--line);}
+    .check:first-child{border-top:0;}
+    .check .ic{flex:0 0 22px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;margin-top:1px;}
+    .ic.pass{background:var(--pass);} .ic.warn{background:var(--warn);} .ic.fail{background:var(--fail);}
+    .check .body{flex:1;}
+    .check .cf{font-size:14.5px;font-weight:700;color:var(--ink);}
+    .check .cd{font-size:13.5px;color:var(--slate);margin-top:2px;line-height:1.45;}
+    .check .cmeta{font-size:12.5px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums;}
+    .check .cmeta code{background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:1px 6px;}
+
+    .legibility{font-size:12.5px;color:var(--warn);background:var(--warn-bg);border-radius:9px;padding:9px 12px;margin-top:12px;}
+    .errbox{font-size:13.5px;color:var(--fail);background:var(--fail-bg);border-radius:9px;padding:11px 13px;margin-top:14px;}
+
+    /* batch */
+    .batchbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0 10px;}
+    .batchbar .count{font-size:13px;color:var(--muted);}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;}
+    th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:9px 10px;border-bottom:1px solid var(--line);}
+    td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--slate);}
+    td .st{display:inline-block;font-size:11.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:4px 9px;border-radius:999px;}
+    .st.pass{background:var(--pass-bg);color:var(--pass);} .st.warn{background:var(--warn-bg);color:var(--warn);}
+    .st.fail{background:var(--fail-bg);color:var(--fail);} .st.run{background:var(--paper);color:var(--muted);}
+    td.fn{font-weight:600;color:var(--ink);word-break:break-all;}
+    td.iss{font-size:13px;}
+    .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--steel);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;}
+    @keyframes sp{to{transform:rotate(360deg);}}
+
+    section.how{margin-top:64px;}
+    section.how h2{font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--navy);border-bottom:1px solid var(--line);padding-bottom:10px;margin:0 0 18px;}
+    .how .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+    @media(max-width:760px){.how .steps{grid-template-columns:1fr 1fr;}}
+    .step .n{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:.06em;}
+    .step h3{font-size:15px;margin:6px 0 6px;color:var(--ink);}
+    .step p{font-size:13.5px;line-height:1.55;color:var(--slate);margin:0;}
+    .notes{font-size:13.5px;line-height:1.7;color:var(--slate);margin-top:26px;}
+    .notes b{color:var(--ink);}
+    .foot{font-size:12.5px;color:var(--muted);margin-top:54px;text-align:center;border-top:1px solid var(--line);padding-top:22px;}
+    .foot a{color:var(--navy-600);text-decoration:none;font-weight:600;}
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/"><span class="mark"></span> ANDREW ZOLL</a>
+    <div class="nav-links">
+      <a href="https://github.com/azoll/ttb-label-verifier" target="_blank" rel="noopener">View source</a>
+      <a href="/">andrewzoll.com</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="inner">
+      <span class="eyebrow"><span class="dot"></span> Built for the U.S. Department of the Treasury · TTB</span>
+      <h1>AI label compliance, in about three seconds.</h1>
+      <p>Drop in an alcohol beverage label. This prototype reads it, checks it against the application and TTB requirements, and tells your agent exactly what passes and what needs a human look.</p>
+      <p>The strict stuff is strict: the Government Warning has to be the exact statutory wording, in capitals. The judgment stuff is forgiving: <em>STONE&rsquo;S THROW</em> and <em>Stone&rsquo;s Throw</em> are the same brand.</p>
+      <div class="meta">A working take-home prototype by Andrew Zoll · Announcement 26-DO-12891471-DH</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tab-single" role="tab" aria-selected="true" onclick="showTab('single')">Verify one label</button>
+      <button class="tab" id="tab-batch" role="tab" aria-selected="false" onclick="showTab('batch')">Batch screen</button>
+    </div>
+
+    <!-- ============ SINGLE ============ -->
+    <div class="panel active" id="panel-single">
+      <div class="grid">
+        <div class="card">
+          <h2>1 · The application</h2>
+          <p class="sub">What the applicant told us. We check the label against this.</p>
+          <label class="fld"><span class="lab">Brand name</span>
+            <input type="text" id="app-brand" placeholder="e.g. Old Tom Distillery"/></label>
+          <label class="fld"><span class="lab">Alcohol content (ABV)</span>
+            <input type="text" id="app-abv" placeholder="e.g. 45% or 45"/></label>
+          <label class="fld"><span class="lab">Class / type <span style="color:var(--muted);font-weight:400">(optional)</span></span>
+            <input type="text" id="app-class" placeholder="e.g. Kentucky Straight Bourbon Whiskey"/></label>
+
+          <div class="samples">
+            <div class="slab">Or load a sample</div>
+            <div class="row" id="single-samples"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>2 · The label</h2>
+          <p class="sub">Photo or scan of the printed label.</p>
+          <div class="drop" id="single-drop" tabindex="0" role="button" aria-label="Upload a label image">
+            <strong>Drop a label image here</strong>
+            <div class="hint">or click to choose · JPG / PNG</div>
+          </div>
+          <input type="file" id="single-file" accept="image/*" hidden/>
+          <div class="preview" id="single-preview"><img id="single-img" alt="label preview"/></div>
+          <div style="margin-top:18px">
+            <button class="btn btn-primary" id="single-go" disabled>Verify label</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="result card" id="single-result"></div>
+    </div>
+
+    <!-- ============ BATCH ============ -->
+    <div class="panel" id="panel-batch">
+      <div class="card">
+        <h2>Batch screen</h2>
+        <p class="sub">For the importer dumps. Drop many labels at once; each is screened for the mandatory Government Warning and the required fields. Results stream in as they finish.</p>
+        <div class="drop" id="batch-drop" tabindex="0" role="button" aria-label="Upload label images">
+          <strong>Drop label images here</strong>
+          <div class="hint">or click to choose · select up to 50 at a time</div>
+        </div>
+        <input type="file" id="batch-file" accept="image/*" multiple hidden/>
+        <div class="batchbar">
+          <button class="btn-ghost" id="batch-samples">Load 4 sample labels</button>
+          <button class="btn-ghost" id="batch-clear">Clear</button>
+          <span class="count" id="batch-count">No labels queued.</span>
+          <span style="flex:1"></span>
+          <button class="btn-ghost" id="batch-csv" style="display:none">Export CSV</button>
+        </div>
+        <button class="btn btn-primary" id="batch-go" disabled style="margin-top:6px">Screen all labels</button>
+        <div id="batch-table-wrap" style="display:none;overflow-x:auto">
+          <table>
+            <thead><tr><th>Label</th><th>Status</th><th>Findings</th><th style="text-align:right">Time</th></tr></thead>
+            <tbody id="batch-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ HOW IT WORKS ============ -->
+    <section class="how">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="step"><div class="n">01</div><h3>Read</h3><p>Claude vision transcribes the printed fields, word-for-word. It only reads — it never guesses missing text.</p></div>
+        <div class="step"><div class="n">02</div><h3>Match</h3><p>Brand and ABV are matched with judgment: case, punctuation, and rounding are forgiven; real mismatches are flagged.</p></div>
+        <div class="step"><div class="n">03</div><h3>Enforce</h3><p>The Government Warning is held to the exact 27&nbsp;CFR&nbsp;16.21 wording, capitalized and bold. Anything off is rejected.</p></div>
+        <div class="step"><div class="n">04</div><h3>Return</h3><p>A plain pass / needs-review / fail per field, in about three seconds, with the exact reason.</p></div>
+      </div>
+      <div class="notes">
+        <p><b>Why these choices.</b> The model extracts; deterministic code decides. That keeps every verdict explainable and consistent, instead of asking an AI to "grade" a label differently each run. Speed was a hard requirement &mdash; the prior scanning vendor lost the room at 30&ndash;40 seconds, so this uses a fast model and ships one label per request, which also lets a 300-label dump screen concurrently rather than in a queue.</p>
+        <p><b>On the federal network.</b> The model call is one outbound HTTPS request to a single endpoint, made server-side &mdash; not from the agent's browser &mdash; so it sits behind one allow-list entry rather than the scattered ML endpoints that broke the last pilot. Full source, setup, assumptions, and trade-offs are in the <a href="https://github.com/azoll/ttb-label-verifier" target="_blank" rel="noopener">repository</a>.</p>
+      </div>
+    </section>
+
+    <div class="foot">
+      Prototype built by <a href="/">Andrew Zoll</a> for the Treasury IT Specialist (AI) take-home ·
+      <a href="https://github.com/azoll/ttb-label-verifier" target="_blank" rel="noopener">Source &amp; documentation</a><br/>
+      Not affiliated with or endorsed by the U.S. Department of the Treasury or TTB. Sample labels are fictional.
+    </div>
+  </main>
+
+  <script>
+    const ENDPOINT = 'verify';
+    const SAMPLES = [
+      {file:'samples/compliant.png',        label:'Compliant bourbon', brand:'Old Tom Distillery', abv:'45%', cls:'Kentucky Straight Bourbon Whiskey'},
+      {file:'samples/warning-titlecase.png',label:'Title-case warning', brand:'Old Tom Distillery', abv:'45%', cls:'Kentucky Straight Bourbon Whiskey'},
+      {file:'samples/missing-warning.png',  label:'Missing warning',    brand:'River Bend Reserve', abv:'40%', cls:'Tennessee Whiskey'},
+      {file:'samples/wine-cabernet.png',    label:'Wine (ABV mismatch)',brand:"Stone's Throw",     abv:'12.5%', cls:'Napa Valley Cabernet Sauvignon'},
+    ];
+
+    function showTab(which){
+      document.getElementById('panel-single').classList.toggle('active', which==='single');
+      document.getElementById('panel-batch').classList.toggle('active', which==='batch');
+      document.getElementById('tab-single').setAttribute('aria-selected', which==='single');
+      document.getElementById('tab-batch').setAttribute('aria-selected', which==='batch');
+    }
+
+    // Downscale large photos client-side so verification stays fast.
+    function fileToDataUrl(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(file);});}
+    async function scaledDataUrl(file, maxEdge=1100, quality=0.85){
+      const url = await fileToDataUrl(file);
+      if(file.size < 600*1024) return url;
+      const img = await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+      const scale = Math.min(1, maxEdge/Math.max(img.width,img.height));
+      if(scale>=1) return url;
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*scale); c.height=Math.round(img.height*scale);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      return c.toDataURL('image/jpeg',quality);
+    }
+    async function urlToDataUrl(u){const r=await fetch(u);const b=await r.blob();return await fileToDataUrl(b);}
+
+    async function verify(image, application, mode, name){
+      const r = await fetch(ENDPOINT,{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({image,application,mode,name})});
+      const data = await r.json();
+      if(!r.ok) throw new Error(data.error||('HTTP '+r.status));
+      return data;
+    }
+
+    const ICON = {pass:'✓', warn:'!', fail:'✕'};
+    const VWORD = {pass:'Passes review', warn:'Needs a human look', fail:'Fails — do not approve'};
+
+    function renderResult(el, data){
+      let html = `<div class="verdict v-${data.status}">
+        <span class="badge">${data.status}</span>
+        <span class="vtext">${VWORD[data.status]}</span>
+        <span class="vtime">${(data.elapsedMs/1000).toFixed(1)}s · ${data.model.replace('anthropic/','')}</span></div>`;
+      for(const c of data.checks){
+        html += `<div class="check"><span class="ic ${c.status}">${ICON[c.status]}</span>
+          <div class="body"><div class="cf">${c.field}</div>
+          <div class="cd">${c.detail}</div>
+          <div class="cmeta">application: <code>${escapeHtml(String(c.expected))}</code> &nbsp; label: <code>${escapeHtml(String(c.found))}</code></div>
+          </div></div>`;
+      }
+      if(data.legibility) html += `<div class="legibility">Image note: ${escapeHtml(data.legibility)}</div>`;
+      el.innerHTML = html; el.style.display='block';
+    }
+    function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+    // ---------- single ----------
+    let singleImage=null;
+    const sFile=document.getElementById('single-file'), sDrop=document.getElementById('single-drop'),
+          sGo=document.getElementById('single-go'), sPrev=document.getElementById('single-preview'),
+          sImg=document.getElementById('single-img'), sRes=document.getElementById('single-result');
+
+    function bindDrop(drop, fileInput, onFiles){
+      drop.addEventListener('click',()=>fileInput.click());
+      drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fileInput.click();}});
+      ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+      ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+      drop.addEventListener('drop',e=>onFiles([...e.dataTransfer.files]));
+      fileInput.addEventListener('change',()=>onFiles([...fileInput.files]));
+    }
+
+    async function setSingleImage(file){
+      singleImage = await scaledDataUrl(file);
+      sImg.src=singleImage; sPrev.style.display='block'; sGo.disabled=false; sRes.style.display='none';
+    }
+    bindDrop(sDrop,sFile,files=>{if(files[0])setSingleImage(files[0]);});
+
+    const ssRow=document.getElementById('single-samples');
+    SAMPLES.forEach(s=>{
+      const b=document.createElement('button');b.className='btn-ghost';b.textContent=s.label;
+      b.onclick=async()=>{
+        document.getElementById('app-brand').value=s.brand;
+        document.getElementById('app-abv').value=s.abv;
+        document.getElementById('app-class').value=s.cls;
+        singleImage=await urlToDataUrl(s.file);
+        sImg.src=singleImage; sPrev.style.display='block'; sGo.disabled=false; sRes.style.display='none';
+      };
+      ssRow.appendChild(b);
+    });
+
+    sGo.addEventListener('click',async()=>{
+      if(!singleImage)return;
+      sGo.disabled=true; sGo.textContent='Reading label…';
+      sRes.style.display='block'; sRes.innerHTML='<div style="color:var(--muted);font-size:14px">Verifying… <span class="spin"></span></div>';
+      try{
+        const application={brandName:document.getElementById('app-brand').value.trim(),
+          abv:document.getElementById('app-abv').value.trim(),
+          classType:document.getElementById('app-class').value.trim()};
+        const data=await verify(singleImage,application,'single',null);
+        renderResult(sRes,data);
+      }catch(e){
+        sRes.innerHTML=`<div class="errbox">Could not verify: ${escapeHtml(e.message)}</div>`;
+      }finally{ sGo.disabled=false; sGo.textContent='Verify label'; }
+    });
+
+    // ---------- batch ----------
+    let batchItems=[]; // {name, dataUrl, result}
+    const bFile=document.getElementById('batch-file'), bDrop=document.getElementById('batch-drop'),
+          bGo=document.getElementById('batch-go'), bCount=document.getElementById('batch-count'),
+          bTbody=document.getElementById('batch-tbody'), bWrap=document.getElementById('batch-table-wrap'),
+          bCsv=document.getElementById('batch-csv');
+
+    function refreshBatchCount(){
+      bCount.textContent = batchItems.length ? `${batchItems.length} label${batchItems.length>1?'s':''} queued.` : 'No labels queued.';
+      bGo.disabled = batchItems.length===0;
+    }
+    async function addBatchFiles(files){
+      for(const f of files.slice(0,50)){
+        if(!f.type.startsWith('image/'))continue;
+        batchItems.push({name:f.name, dataUrl:await scaledDataUrl(f), result:null});
+      }
+      refreshBatchCount();
+    }
+    bindDrop(bDrop,bFile,files=>addBatchFiles(files));
+    document.getElementById('batch-clear').onclick=()=>{batchItems=[];bTbody.innerHTML='';bWrap.style.display='none';bCsv.style.display='none';refreshBatchCount();};
+    document.getElementById('batch-samples').onclick=async()=>{
+      for(const s of SAMPLES) batchItems.push({name:s.file.split('/').pop(), dataUrl:await urlToDataUrl(s.file), result:null});
+      refreshBatchCount();
+    };
+
+    function findings(data){
+      if(data.error) return 'Error: '+data.error;
+      const issues=data.checks.filter(c=>c.status!=='pass').map(c=>`${c.field} — ${c.detail}`);
+      return issues.length ? issues.join('<br/>') : 'All required fields present and warning correct.';
+    }
+
+    bGo.addEventListener('click',async()=>{
+      bGo.disabled=true; bWrap.style.display='block'; bTbody.innerHTML=''; bCsv.style.display='none';
+      const rows = batchItems.map((it,i)=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td class="fn">${escapeHtml(it.name)}</td><td><span class="st run">queued</span></td><td class="iss"></td><td style="text-align:right">—</td>`;
+        bTbody.appendChild(tr); return tr;
+      });
+      // concurrency pool of 4
+      let idx=0; const POOL=4;
+      async function worker(){
+        while(idx<batchItems.length){
+          const i=idx++; const it=batchItems[i]; const tr=rows[i];
+          tr.children[1].innerHTML='<span class="st run"><span class="spin"></span> reading</span>';
+          try{
+            const data=await verify(it.dataUrl,{}, 'batch', it.name);
+            it.result=data;
+            tr.children[1].innerHTML=`<span class="st ${data.status}">${data.status}</span>`;
+            tr.children[2].innerHTML=findings(data);
+            tr.children[3].textContent=(data.elapsedMs/1000).toFixed(1)+'s';
+          }catch(e){
+            it.result={error:e.message};
+            tr.children[1].innerHTML=`<span class="st fail">error</span>`;
+            tr.children[2].textContent=e.message;
+          }
+        }
+      }
+      await Promise.all(Array.from({length:Math.min(POOL,batchItems.length)},worker));
+      bGo.disabled=false; bCsv.style.display='inline-block';
+    });
+
+    bCsv.addEventListener('click',()=>{
+      const esc=v=>`"${String(v).replace(/"/g,'""')}"`;
+      let csv='label,status,findings,seconds\n';
+      for(const it of batchItems){
+        const d=it.result||{}; const st=d.error?'error':(d.status||'');
+        const f=d.error?d.error:(d.checks?d.checks.filter(c=>c.status!=='pass').map(c=>c.field+': '+c.detail).join(' | ')||'OK':'');
+        csv+=[esc(it.name),esc(st),esc(f),esc(d.elapsedMs?(d.elapsedMs/1000).toFixed(1):'')].join(',')+'\n';
+      }
+      const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);a.download='ttb-batch-results.csv';a.click();
+    });
+  </script>
+</body>
+</html>
