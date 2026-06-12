@@ -11,6 +11,7 @@ voices into testable requirements:
 | Sarah: "If we can't get results back in about 5 seconds, nobody's going to use it" | Hard latency budget. Drove the model choice and the one-label-per-request design |
 | Sarah: "something my mother could figure out … half our team is over 50" | One screen, big targets, plain-language verdicts, sample buttons, no hidden controls |
 | Sarah / Janet: importers "dump 200, 300 label applications on us at once" | Batch mode with concurrent processing and CSV export |
+| Jenny: labels "photographed at weird angles… glare" | A rotated, glare-washed sample ships with the app and verifies cleanly |
 | Jenny: the warning "has to be **exact** … all caps and bold," caught a title-case one | The warning check is strict and formatting-aware — the highest-value automatable check |
 | Dave: `STONE'S THROW` vs `Stone's Throw` "is obviously the same thing. You need judgment" | Brand/ABV matching normalizes case, punctuation, and rounding before comparing |
 | Marcus: the firewall "blocked connections to their ML endpoints" | Keep the model call server-side and to a single endpoint (see below) |
@@ -110,9 +111,14 @@ would change.
   flagged as "needs review" rather than auto-failed — a human confirms the typography.
 - Scope is a standalone proof-of-concept: no auth, persistence, COLA integration, or PII
   handling, per Marcus's guidance.
-- Sample labels are AI-describable fictional labels generated locally (see
-  `public/samples/_generate.py`), covering compliant / title-case warning / missing warning /
-  ABV-mismatch cases.
+- Country of origin is required for imports only, and import status lives on the COLA
+  application, not the label — so the tool confirms it when printed and stays silent when
+  absent rather than wrongly flagging every domestic label. Production would key this off
+  the application's import flag.
+- Sample labels are fictional and generated locally (see `public/samples/_generate.py`),
+  covering compliant / title-case warning / missing warning / ABV-mismatch cases, plus a
+  rotated-with-glare "bad photo" of the compliant label — the imperfect-image case Jenny
+  raised — which the pipeline reads and passes.
 
 ## What a production version would add
 

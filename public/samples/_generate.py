@@ -162,4 +162,22 @@ make_label("wine-cabernet.png",
            origin="Product of USA",
            bg=(245, 241, 236), accent=(60, 30, 40))
 
+# 5) Imperfect photo of the compliant label — rotated with glare and slight blur
+# (Jenny's "weird angles / glare on the bottle" case; should still verify cleanly)
+from PIL import ImageFilter
+
+base = Image.open(os.path.join(HERE, "compliant.png")).convert("RGB")
+rot = base.rotate(6, expand=True, fillcolor=(206, 202, 194), resample=Image.BICUBIC)
+canvas = rot.copy()
+glare = Image.new("L", canvas.size, 0)
+gd = ImageDraw.Draw(glare)
+cx, cy, r = int(canvas.width * 0.74), int(canvas.height * 0.20), int(canvas.width * 0.55)
+for i in range(r, 0, -8):
+    gd.ellipse([cx - i, cy - i, cx + i, cy + i], fill=int(110 * (1 - i / r)))
+white = Image.new("RGB", canvas.size, (255, 255, 255))
+canvas = Image.composite(white, canvas, glare)
+canvas = canvas.filter(ImageFilter.GaussianBlur(0.7))
+canvas.save(os.path.join(HERE, "bad-photo.png"), "PNG")
+print("wrote bad-photo.png")
+
 print("done")

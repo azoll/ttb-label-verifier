@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   CANONICAL_WARNING, normBrand, parseAbv, similarity,
-  checkBrand, checkAbv, checkWarning, checkPresence, checkAbvPresence, runChecks,
+  checkBrand, checkAbv, checkWarning, checkPresence, checkAbvPresence, checkOrigin, runChecks,
 } from "../lib/ttb-verify-core.mjs";
 
 const goodWarning = {
@@ -159,4 +159,21 @@ test("runChecks single: includes net contents + producer presence (TTB-required 
   const r = runChecks("single", { brandName: "Old Tom Distillery", abv: "45%" }, extracted);
   assert.equal(r.status, "warn");
   assert.equal(r.checks.find((c) => c.field === "Net contents").status, "warn");
+});
+
+test("origin: shown as confirmation when printed, no false flag when absent", () => {
+  assert.equal(checkOrigin("Product of USA").status, "pass");
+  assert.equal(checkOrigin(null), null); // domestic labels aren't wrongly flagged
+});
+
+test("runChecks surfaces country of origin in both modes when present", () => {
+  const extracted = {
+    brand_name: "X", class_type: "Y", alcohol_content: "40%", abv_percent: 40,
+    net_contents: "750 mL", producer_name_address: "Z", country_of_origin: "Product of France",
+    government_warning: goodWarning,
+  };
+  for (const mode of ["single", "batch"]) {
+    const r = runChecks(mode, { brandName: "X", abv: "40%" }, extracted);
+    assert.ok(r.checks.find((c) => c.field === "Country of origin"), mode);
+  }
 });

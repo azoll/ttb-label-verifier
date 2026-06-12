@@ -26,6 +26,8 @@ applicant submitted). It:
    - **Net contents & producer name/address** — presence-verified on every label
      (TTB-required elements). A missing ABV is flagged with a note that certain wine and
      beer classes are exempt.
+   - **Country of origin** — confirmed when printed. When absent it is not flagged,
+     because import status isn't knowable from the label alone (see APPROACH.md).
 3. **Returns** a plain pass / needs-review / fail per field, with the exact reason.
 
 Two modes:
@@ -81,7 +83,7 @@ npm test        # 22 offline unit tests of the verdict logic — no network
 ### Regenerate the sample labels
 
 ```bash
-npm run samples # writes the four fixtures in public/samples/ (needs Python + Pillow)
+npm run samples # writes the five fixtures in public/samples/ (needs Python + Pillow)
 ```
 
 ## Deliverables map
